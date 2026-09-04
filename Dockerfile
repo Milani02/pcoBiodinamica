@@ -13,5 +13,6 @@ RUN npm ci --omit=dev
 COPY server/ ./
 COPY --from=client-build /app/client/dist /app/client/dist
 
-EXPOSE 4000
+ENV PORT=3000
+EXPOSE 3000
 CMD ["node", "src/index.js"]
