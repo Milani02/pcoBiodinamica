@@ -1,0 +1,8 @@
+node_modules
+dist
+.git
+.env
+CREDENCIAIS.txt
+Pianel Pagamento Diretoria.xlsx
+server/data
+.claude
