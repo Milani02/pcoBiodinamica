@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+server/data/users.json
+server/data/subscriptions.json
+CREDENCIAIS.txt
+Pianel Pagamento Diretoria.xlsx
+.claude/settings.local.json

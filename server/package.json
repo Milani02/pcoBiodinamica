@@ -1,0 +1,26 @@
+{
+  "name": "biodinamica-controle-gastos-server",
+  "version": "1.0.0",
+  "description": "API do painel de controle de gastos de assinaturas de TI da Biodinamica",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "seed": "node scripts/seed.js",
+    "create-user": "node scripts/create-user.js"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
