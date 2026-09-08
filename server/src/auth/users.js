@@ -1,26 +1,27 @@
-import bcrypt from "bcryptjs";
-import { createJsonStore } from "../lib/jsonStore.js";
+import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 
-const usersStore = createJsonStore("users.json");
-
-export async function findUserByUsername(username) {
-  const users = await usersStore.read();
-  return users.find(
-    (u) => u.username.toLowerCase() === String(username).toLowerCase()
-  );
+export function publicUser(profile) {
+  if (!profile) return null;
+  const { id, username, name, role } = profile;
+  return { id, username, name, role };
 }
 
-export async function verifyPassword(user, password) {
-  return bcrypt.compare(password, user.passwordHash);
+export async function getProfileById(id) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id, username, name, role")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
-export function publicUser(user) {
-  if (!user) return null;
-  const { passwordHash, ...rest } = user;
-  return rest;
-}
-
-export async function hasAnyUsers() {
-  const users = await usersStore.read();
-  return users.length > 0;
+export async function getProfileByUsername(username) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id, username, name, role")
+    .ilike("username", username)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }

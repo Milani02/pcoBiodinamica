@@ -1,16 +1,53 @@
 import { Router } from "express";
-import { randomUUID } from "node:crypto";
-import { createJsonStore } from "../lib/jsonStore.js";
+import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 import { computeRenewalStatus } from "../lib/renewals.js";
 import { requireAuth, requireRole } from "../auth/middleware.js";
 
 export const subscriptionsRouter = Router();
-const store = createJsonStore("subscriptions.json");
+const TABLE = "subscriptions";
 
 const BILLING_CYCLES = ["mensal", "anual", "sob_demanda"];
 const PAYMENT_METHODS = ["cartao_credito", "boleto", "pix", "outro"];
 const RECURRENCE_TYPES = ["monthly_day", "fixed_date", "on_demand"];
 const CURRENCIES = ["BRL", "USD", "EUR"];
+
+const CAMEL_TO_SNAKE = {
+  billingCycle: "billing_cycle",
+  paymentMethod: "payment_method",
+  recurrenceType: "recurrence_type",
+  recurrenceDay: "recurrence_day",
+  recurrenceDate: "recurrence_date",
+  billingUrl: "billing_url",
+  accessUrl: "access_url",
+};
+
+function toRow(data) {
+  const row = {};
+  for (const [key, value] of Object.entries(data)) {
+    row[CAMEL_TO_SNAKE[key] || key] = value;
+  }
+  return row;
+}
+
+function fromRow(row) {
+  return {
+    id: row.id,
+    platform: row.platform,
+    subject: row.subject,
+    billingCycle: row.billing_cycle,
+    amount: row.amount,
+    currency: row.currency,
+    paymentMethod: row.payment_method,
+    recurrenceType: row.recurrence_type,
+    recurrenceDay: row.recurrence_day,
+    recurrenceDate: row.recurrence_date,
+    billingUrl: row.billing_url,
+    accessUrl: row.access_url,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 function withStatus(subscription) {
   return { ...subscription, ...computeRenewalStatus(subscription) };
@@ -77,66 +114,71 @@ function validatePayload(body, { partial = false } = {}) {
 subscriptionsRouter.use(requireAuth);
 
 subscriptionsRouter.get("/", async (_req, res) => {
-  const subscriptions = await store.read();
-  res.json({
-    subscriptions: subscriptions
-      .map(withStatus)
-      .sort((a, b) => a.platform.localeCompare(b.platform, "pt-BR")),
-  });
+  const { data, error } = await supabaseAdmin.from(TABLE).select("*");
+  if (error) throw error;
+
+  const subscriptions = data
+    .map(fromRow)
+    .map(withStatus)
+    .sort((a, b) => a.platform.localeCompare(b.platform, "pt-BR"));
+
+  res.json({ subscriptions });
 });
 
 subscriptionsRouter.post("/", requireRole("admin_ti"), async (req, res) => {
   const { errors, data } = validatePayload(req.body || {});
   if (errors.length) return res.status(400).json({ error: errors.join("; ") });
 
-  const now = new Date().toISOString();
-  const record = {
-    id: randomUUID(),
+  const row = {
     currency: "BRL",
     amount: null,
-    recurrenceDay: null,
-    recurrenceDate: null,
-    billingUrl: "",
-    accessUrl: "",
+    recurrence_day: null,
+    recurrence_date: null,
+    billing_url: "",
+    access_url: "",
     notes: "",
-    ...data,
-    createdAt: now,
-    updatedAt: now,
+    ...toRow(data),
   };
 
-  const next = await store.update((current) => [...current, record]);
-  res.status(201).json({ subscription: withStatus(record), count: next.length });
+  const { data: inserted, error } = await supabaseAdmin
+    .from(TABLE)
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+
+  const { count } = await supabaseAdmin
+    .from(TABLE)
+    .select("id", { count: "exact", head: true });
+
+  res.status(201).json({ subscription: withStatus(fromRow(inserted)), count });
 });
 
 subscriptionsRouter.put("/:id", requireRole("admin_ti"), async (req, res) => {
   const { errors, data } = validatePayload(req.body || {}, { partial: true });
   if (errors.length) return res.status(400).json({ error: errors.join("; ") });
 
-  let updated = null;
-  await store.update((current) => {
-    const idx = current.findIndex((s) => s.id === req.params.id);
-    if (idx === -1) return current;
-    updated = {
-      ...current[idx],
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-    const next = [...current];
-    next[idx] = updated;
-    return next;
-  });
+  const { data: updated, error } = await supabaseAdmin
+    .from(TABLE)
+    .update({ ...toRow(data), updated_at: new Date().toISOString() })
+    .eq("id", req.params.id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
 
   if (!updated) return res.status(404).json({ error: "Assinatura nao encontrada." });
-  res.json({ subscription: withStatus(updated) });
+  res.json({ subscription: withStatus(fromRow(updated)) });
 });
 
 subscriptionsRouter.delete("/:id", requireRole("admin_ti"), async (req, res) => {
-  let existed = false;
-  await store.update((current) => {
-    existed = current.some((s) => s.id === req.params.id);
-    return current.filter((s) => s.id !== req.params.id);
-  });
+  const { data: deleted, error } = await supabaseAdmin
+    .from(TABLE)
+    .delete()
+    .eq("id", req.params.id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
 
-  if (!existed) return res.status(404).json({ error: "Assinatura nao encontrada." });
+  if (!deleted) return res.status(404).json({ error: "Assinatura nao encontrada." });
   res.status(204).send();
 });

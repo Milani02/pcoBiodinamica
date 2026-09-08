@@ -5,7 +5,6 @@ export interface User {
   username: string;
   name: string;
   role: Role;
-  updatedAt: string;
 }
 
 export type BillingCycle = "mensal" | "anual" | "sob_demanda";

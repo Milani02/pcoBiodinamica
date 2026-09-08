@@ -1,4 +1,5 @@
-import type { Subscription, SubscriptionInput, User } from "@/types";
+import type { Subscription, SubscriptionInput } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 class ApiError extends Error {
   status: number;
@@ -9,9 +10,14 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+
   const res = await fetch(`/api${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     ...options,
   });
 
@@ -31,14 +37,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (username: string, password: string) =>
-    request<{ user: User }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
-  logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
-  me: () => request<{ user: User }>("/auth/me"),
-
   listSubscriptions: () =>
     request<{ subscriptions: Subscription[] }>("/subscriptions"),
   createSubscription: (data: SubscriptionInput) =>

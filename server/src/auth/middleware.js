@@ -1,18 +1,30 @@
-import jwt from "jsonwebtoken";
-import { config } from "../config.js";
+import { supabaseAdmin } from "../lib/supabaseAdmin.js";
+import { getProfileById, publicUser } from "./users.js";
 
-export function requireAuth(req, res, next) {
-  const token = req.cookies?.[config.cookieName];
+function bearerToken(req) {
+  const header = req.headers.authorization || "";
+  const [scheme, token] = header.split(" ");
+  return scheme === "Bearer" && token ? token : null;
+}
+
+export async function requireAuth(req, res, next) {
+  const token = bearerToken(req);
   if (!token) {
     return res.status(401).json({ error: "Nao autenticado." });
   }
-  try {
-    const payload = jwt.verify(token, config.jwtSecret);
-    req.user = payload;
-    next();
-  } catch {
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user) {
     return res.status(401).json({ error: "Sessao invalida ou expirada." });
   }
+
+  const profile = await getProfileById(data.user.id);
+  if (!profile) {
+    return res.status(401).json({ error: "Perfil de usuario nao encontrado." });
+  }
+
+  req.user = publicUser(profile);
+  next();
 }
 
 export function requireRole(...roles) {
