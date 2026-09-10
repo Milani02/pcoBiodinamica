@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { CalendarBlank, ChartBar, CurrencyCircleDollar, FileArrowDown } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -9,6 +8,7 @@ import { SpendBarChart, type SpendBarDatum } from "@/components/charts/SpendBarC
 import { SpendCompositionBar } from "@/components/charts/SpendCompositionBar";
 import { SpendForecastLineChart } from "@/components/charts/SpendForecastLineChart";
 import { RenewalTimeline } from "@/components/RenewalTimeline";
+import { RenewalAlertModal } from "@/components/RenewalAlertModal";
 import {
   OverviewFilters,
   defaultOverviewFilters,
@@ -51,6 +51,8 @@ export function OverviewPage() {
   const { user } = useAuth();
   const { subscriptions, loading } = useSubscriptions();
   const [filters, setFilters] = useState<OverviewFilterState>(defaultOverviewFilters);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertSubscriptions, setAlertSubscriptions] = useState<Subscription[]>([]);
 
   const filtered = useMemo(
     () => subscriptions.filter((s) => matchesFilters(s, filters)),
@@ -93,20 +95,13 @@ export function OverviewPage() {
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
 
-    const critical = subscriptions.filter((s) => s.status === "critical").length;
-    const warning = subscriptions.filter((s) => s.status === "warning").length;
-    if (critical === 0 && warning === 0) return;
+    const sortByDays = (a: Subscription, b: Subscription) => (a.daysUntil ?? 0) - (b.daysUntil ?? 0);
+    const critical = subscriptions.filter((s) => s.status === "critical").sort(sortByDays);
+    const warning = subscriptions.filter((s) => s.status === "warning").sort(sortByDays);
+    if (critical.length === 0 && warning.length === 0) return;
 
-    const headline =
-      critical > 0
-        ? `${critical} assinatura${critical === 1 ? "" : "s"} vencida${critical === 1 ? "" : "s"}`
-        : `${warning} assinatura${warning === 1 ? "" : "s"} vencendo em breve`;
-    const description =
-      critical > 0 && warning > 0
-        ? `+ ${warning} vencendo nos proximos dias.`
-        : "Confira os prazos na secao de vencimentos abaixo.";
-
-    toast.warning(headline, { description, duration: 8000 });
+    setAlertSubscriptions([...critical, ...warning]);
+    setAlertOpen(true);
   }, [loading, subscriptions, user]);
 
   function handleGenerateReport() {
@@ -137,6 +132,12 @@ export function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RenewalAlertModal
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        subscriptions={alertSubscriptions}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Visao geral</h1>
