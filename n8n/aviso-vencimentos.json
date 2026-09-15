@@ -1,0 +1,165 @@
+{
+  "name": "Aviso de vencimentos - Controle de Gastos TI",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily-8am",
+      "name": "Todo dia as 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, platform, subject, billing_cycle, amount, currency, recurrence_type, recurrence_day, recurrence_date FROM subscriptions WHERE recurrence_type IN ('monthly_day','fixed_date');",
+        "options": {}
+      },
+      "id": "postgres-fetch-subscriptions",
+      "name": "Buscar assinaturas (Supabase)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -160,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "Supabase Postgres - Controle Gastos TI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const TIMEZONE = \"America/Sao_Paulo\";\n\nfunction todayInTZ() {\n  const now = new Date();\n  const parts = new Intl.DateTimeFormat(\"en-CA\", {\n    timeZone: TIMEZONE,\n    year: \"numeric\",\n    month: \"2-digit\",\n    day: \"2-digit\",\n  }).formatToParts(now);\n  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));\n  return new Date(`${map.year}-${map.month}-${map.day}T00:00:00`);\n}\n\nfunction lastDayOfMonth(year, monthIndex) {\n  return new Date(year, monthIndex + 1, 0).getDate();\n}\n\nfunction nextMonthlyOccurrence(day, today) {\n  const clampedDay = (year, monthIndex) => Math.min(day, lastDayOfMonth(year, monthIndex));\n  const thisMonth = new Date(\n    today.getFullYear(),\n    today.getMonth(),\n    clampedDay(today.getFullYear(), today.getMonth())\n  );\n  if (thisMonth >= today) return thisMonth;\n  const nextMonthIndex = today.getMonth() + 1;\n  const year = today.getFullYear() + Math.floor(nextMonthIndex / 12);\n  const monthIndex = nextMonthIndex % 12;\n  return new Date(year, monthIndex, clampedDay(year, monthIndex));\n}\n\nfunction formatDateBR(date) {\n  return date.toLocaleDateString(\"pt-BR\", { day: \"2-digit\", month: \"2-digit\", year: \"numeric\" });\n}\n\nconst today = todayInTZ();\nconst matches = [];\n\nfor (const item of items) {\n  const sub = item.json;\n  if (sub.recurrence_type !== \"monthly_day\" && sub.recurrence_type !== \"fixed_date\") continue;\n\n  let dueDate;\n  if (sub.recurrence_type === \"fixed_date\") {\n    if (!sub.recurrence_date) continue;\n    dueDate = new Date(`${sub.recurrence_date}T00:00:00`);\n  } else {\n    if (!sub.recurrence_day) continue;\n    dueDate = nextMonthlyOccurrence(Number(sub.recurrence_day), today);\n  }\n\n  // Aviso normal: 1 dia antes do vencimento.\n  // Se esse dia cair num domingo, avisa na sexta-feira anterior.\n  const notifyDate = new Date(dueDate);\n  notifyDate.setDate(notifyDate.getDate() - 1);\n  if (notifyDate.getDay() === 0) {\n    notifyDate.setDate(notifyDate.getDate() - 2);\n  }\n\n  if (notifyDate.getTime() === today.getTime()) {\n    matches.push({\n      platform: sub.platform,\n      subject: sub.subject,\n      amount: sub.amount,\n      currency: sub.currency || \"BRL\",\n      dueDate: formatDateBR(dueDate),\n    });\n  }\n}\n\nconst lines = matches.map((m) => {\n  const valor = m.amount != null ? ` \\u2014 ${m.currency} ${Number(m.amount).toFixed(2)}` : \"\";\n  const assunto = m.subject ? ` (${m.subject})` : \"\";\n  return `- ${m.platform}${assunto}: vence em ${m.dueDate}${valor}`;\n});\n\nconst subject = `Aviso de vencimento - ${matches.length} assinatura${matches.length === 1 ? \"\" : \"s\"}`;\nconst bodyText = `Assinaturas com vencimento proximo:\\n\\n${lines.join(\"\\n\")}\\n\\nEnviado automaticamente pelo n8n.`;\n\nreturn [{ json: { matches, count: matches.length, subject, bodyText } }];"
+      },
+      "id": "code-compute-notify",
+      "name": "Calcular quem avisar hoje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-matches",
+              "leftValue": "={{$json.count}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-matches",
+      "name": "Tem aviso hoje?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "pagamento@biodinamica.com.br",
+        "toEmail": "sti@biodinamica.com.br,gti@biodinamica.com.br,ti03@biodinamica.com.br,ad@biodinamica.com.br",
+        "subject": "={{$json.subject}}",
+        "emailFormat": "text",
+        "text": "={{$json.bodyText}}",
+        "options": {}
+      },
+      "id": "email-send",
+      "name": "Enviar email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        -100
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "pagamento@biodinamica.com.br"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Todo dia as 8h": {
+      "main": [
+        [
+          {
+            "node": "Buscar assinaturas (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar assinaturas (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Calcular quem avisar hoje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular quem avisar hoje": {
+      "main": [
+        [
+          {
+            "node": "Tem aviso hoje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem aviso hoje?": {
+      "main": [
+        [
+          {
+            "node": "Enviar email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  }
+}
