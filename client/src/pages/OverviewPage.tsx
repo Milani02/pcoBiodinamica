@@ -8,6 +8,7 @@ import { SpendBarChart, type SpendBarDatum } from "@/components/charts/SpendBarC
 import { SpendCompositionBar } from "@/components/charts/SpendCompositionBar";
 import { SpendForecastLineChart } from "@/components/charts/SpendForecastLineChart";
 import { RenewalTimeline } from "@/components/RenewalTimeline";
+import { Reveal } from "@/components/Reveal";
 import { RenewalAlertModal } from "@/components/RenewalAlertModal";
 import {
   OverviewFilters,
@@ -159,7 +160,7 @@ export function OverviewPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="Gasto mensal (BRL)"
           value={formatMoney(stats.monthlyTotal)}
@@ -168,24 +169,24 @@ export function OverviewPage() {
               ? `+ ${stats.foreign.map((s) => formatMoney(s.amount, s.currency)).join(", ")} em outras moedas`
               : "Soma normalizada de planos mensais e anuais"
           }
-          icon={<CurrencyCircleDollar weight="bold" className="size-4 text-muted-foreground" />}
+          icon={<CurrencyCircleDollar weight="bold" className="size-4" />}
         />
         <StatTile
           label="Gasto anual (BRL)"
           value={formatMoney(stats.annualTotal)}
           hint="Projecao com base no gasto mensal atual"
-          icon={<ChartBar weight="bold" className="size-4 text-muted-foreground" />}
+          icon={<ChartBar weight="bold" className="size-4" />}
         />
         <StatTile
           label="Proximos vencimentos"
           value={String(stats.upcoming.length)}
           hint={stats.overdue.length > 0 ? `${stats.overdue.length} vencida(s)` : "Nos proximos 7 dias"}
           tone={stats.overdue.length > 0 ? "critical" : stats.upcoming.length > 0 ? "warning" : "default"}
-          icon={<CalendarBlank weight="bold" className="size-4 text-muted-foreground" />}
+          icon={<CalendarBlank weight="bold" className="size-4" />}
         />
-      </div>
+      </Reveal>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <Reveal delay={0.06} className="panel">
         <h2 className="text-sm font-semibold text-foreground">Projecao de gasto mensal</h2>
         <p className="mb-4 text-xs text-muted-foreground">
           Proximos 12 meses, somando recorrencia mensal e picos de renovacoes anuais (BRL)
@@ -194,9 +195,9 @@ export function OverviewPage() {
           subscriptions={filtered}
           emptyMessage="Nenhuma assinatura com os filtros atuais."
         />
-      </div>
+      </Reveal>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <Reveal delay={0.1} className="panel">
         <h2 className="text-sm font-semibold text-foreground">Composicao do gasto mensal</h2>
         <p className="mb-4 text-xs text-muted-foreground">Para onde vai o orcamento de TI, por categoria</p>
         <SpendCompositionBar
@@ -204,27 +205,27 @@ export function OverviewPage() {
           allSubscriptions={subscriptions}
           emptyMessage="Nenhuma assinatura com os filtros atuais."
         />
-      </div>
+      </Reveal>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
+      <Reveal delay={0.14} className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="panel lg:col-span-3">
           <h2 className="text-sm font-semibold text-foreground">Gasto mensal por plataforma</h2>
           <p className="mb-4 text-xs text-muted-foreground">Valores em reais, normalizados por mes</p>
           <SpendBarChart data={stats.barData} emptyMessage="Nenhuma assinatura com os filtros atuais." />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+        <div className="panel lg:col-span-2">
           <h2 className="text-sm font-semibold text-foreground">Vencimentos</h2>
           <p className="mb-1 text-xs text-muted-foreground">Ordenado por proximidade</p>
           <RenewalTimeline subscriptions={filtered} />
         </div>
-      </div>
+      </Reveal>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <Reveal delay={0.18} className="panel">
         <h2 className="text-sm font-semibold text-foreground">Gasto mensal por forma de pagamento</h2>
         <p className="mb-4 text-xs text-muted-foreground">Valores em reais, normalizados por mes</p>
         <SpendBarChart data={stats.paymentData} emptyMessage="Nenhuma assinatura com os filtros atuais." />
-      </div>
+      </Reveal>
     </div>
   );
 }

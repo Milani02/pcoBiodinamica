@@ -40,9 +40,13 @@ create table if not exists public.subscriptions (
   billing_url text not null default '',
   access_url text not null default '',
   notes text not null default '',
+  last_paid_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migracao para bancos ja criados antes do campo last_paid_at existir:
+alter table public.subscriptions add column if not exists last_paid_at timestamptz;
 
 alter table public.subscriptions enable row level security;
 

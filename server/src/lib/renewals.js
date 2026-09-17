@@ -33,6 +33,30 @@ function nextMonthlyOccurrence(day, from) {
 }
 
 /**
+ * Avanca uma data fixa (YYYY-MM-DD) um ciclo de cobranca a frente, usado
+ * quando o admin marca uma assinatura de data fixa como paga.
+ */
+export function advanceFixedDate(dateStr, billingCycle) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+
+  if (billingCycle === "anual") {
+    const nextYear = year + 1;
+    const clampedDay = Math.min(day, lastDayOfMonth(nextYear, month - 1));
+    return `${nextYear}-${String(month).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+  }
+
+  if (billingCycle === "mensal") {
+    const nextMonthIndex = month; // month is 1-based, so this is "month" as 0-based next month
+    const nextYear = year + Math.floor(nextMonthIndex / 12);
+    const monthIndex = nextMonthIndex % 12;
+    const clampedDay = Math.min(day, lastDayOfMonth(nextYear, monthIndex));
+    return `${nextYear}-${String(monthIndex + 1).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+  }
+
+  return dateStr;
+}
+
+/**
  * @returns {{ nextRenewalDate: string|null, daysUntil: number|null, status: 'ok'|'warning'|'critical'|'on_demand' }}
  */
 export function computeRenewalStatus(subscription, now = new Date()) {

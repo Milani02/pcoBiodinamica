@@ -61,5 +61,17 @@ export function useSubscriptions() {
     }
   }, [reload]);
 
-  return { subscriptions, loading, error, reload, create, update, remove };
+  const markPaid = useCallback(async (id: string) => {
+    try {
+      await api.markSubscriptionPaid(id);
+      toast.success("Assinatura marcada como paga.");
+      await reload();
+      return true;
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Falha ao marcar como paga.");
+      return false;
+    }
+  }, [reload]);
+
+  return { subscriptions, loading, error, reload, create, update, remove, markPaid };
 }

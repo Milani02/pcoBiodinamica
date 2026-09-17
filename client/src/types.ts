@@ -27,6 +27,7 @@ export interface Subscription {
   billingUrl: string;
   accessUrl: string;
   notes: string;
+  lastPaidAt: string | null;
   createdAt: string;
   updatedAt: string;
   nextRenewalDate: string | null;
@@ -36,5 +37,5 @@ export interface Subscription {
 
 export type SubscriptionInput = Omit<
   Subscription,
-  "id" | "createdAt" | "updatedAt" | "nextRenewalDate" | "daysUntil" | "status"
+  "id" | "createdAt" | "updatedAt" | "nextRenewalDate" | "daysUntil" | "status" | "lastPaidAt"
 >;

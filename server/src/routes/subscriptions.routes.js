@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin.js";
-import { computeRenewalStatus } from "../lib/renewals.js";
+import { computeRenewalStatus, advanceFixedDate } from "../lib/renewals.js";
 import { requireAuth, requireRole } from "../auth/middleware.js";
 
 export const subscriptionsRouter = Router();
@@ -19,6 +19,7 @@ const CAMEL_TO_SNAKE = {
   recurrenceDate: "recurrence_date",
   billingUrl: "billing_url",
   accessUrl: "access_url",
+  lastPaidAt: "last_paid_at",
 };
 
 function toRow(data) {
@@ -44,6 +45,7 @@ function fromRow(row) {
     billingUrl: row.billing_url,
     accessUrl: row.access_url,
     notes: row.notes,
+    lastPaidAt: row.last_paid_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -167,6 +169,35 @@ subscriptionsRouter.put("/:id", requireRole("admin_ti"), async (req, res) => {
   if (error) throw error;
 
   if (!updated) return res.status(404).json({ error: "Assinatura nao encontrada." });
+  res.json({ subscription: withStatus(fromRow(updated)) });
+});
+
+subscriptionsRouter.post("/:id/pay", requireRole("admin_ti"), async (req, res) => {
+  const { data: current, error: fetchError } = await supabaseAdmin
+    .from(TABLE)
+    .select("*")
+    .eq("id", req.params.id)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!current) return res.status(404).json({ error: "Assinatura nao encontrada." });
+
+  const updates = {
+    last_paid_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (current.recurrence_type === "fixed_date" && current.recurrence_date) {
+    updates.recurrence_date = advanceFixedDate(current.recurrence_date, current.billing_cycle);
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from(TABLE)
+    .update(updates)
+    .eq("id", req.params.id)
+    .select()
+    .single();
+  if (error) throw error;
+
   res.json({ subscription: withStatus(fromRow(updated)) });
 });
 

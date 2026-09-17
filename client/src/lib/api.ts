@@ -51,6 +51,10 @@ export const api = {
     }),
   deleteSubscription: (id: string) =>
     request<void>(`/subscriptions/${id}`, { method: "DELETE" }),
+  markSubscriptionPaid: (id: string) =>
+    request<{ subscription: Subscription }>(`/subscriptions/${id}/pay`, {
+      method: "POST",
+    }),
 };
 
 export { ApiError };

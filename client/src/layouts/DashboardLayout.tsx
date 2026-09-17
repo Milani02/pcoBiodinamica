@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { motion } from "motion/react";
 import { ChartLine, ListBullets, SignOut } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -14,6 +15,7 @@ const navItems = [
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background">
@@ -27,24 +29,32 @@ export function DashboardLayout() {
         </div>
 
         <nav className="mt-8 flex flex-1 flex-col gap-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )
-              }
-            >
-              <item.icon weight="bold" className="size-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isActive = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className="relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active-pill"
+                    className="absolute inset-0 rounded-lg bg-primary shadow-[0_4px_14px_-4px_rgba(77,89,13,0.5)]"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <item.icon
+                  weight="bold"
+                  className={cn("relative z-10 size-4 transition-colors", isActive && "text-primary-foreground")}
+                />
+                <span className={cn("relative z-10 transition-colors", isActive && "text-primary-foreground")}>
+                  {item.label}
+                </span>
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -84,7 +94,7 @@ export function DashboardLayout() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 )
               }

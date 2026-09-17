@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { ArrowSquareOut, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  CheckCircle,
+  Clock,
+  Infinity as InfinityIcon,
+  PencilSimple,
+  Plus,
+  Trash,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Reveal } from "@/components/Reveal";
 import {
   Table,
   TableBody,
@@ -41,17 +50,17 @@ const paymentLabel: Record<Subscription["paymentMethod"], string> = {
   outro: "Outro",
 };
 
-const statusBadgeClass: Record<Subscription["status"], string> = {
-  critical: "bg-destructive/10 text-destructive border-destructive/20",
-  warning: "bg-warning/10 text-warning border-warning/20",
-  ok: "bg-success/10 text-success border-success/20",
-  on_demand: "bg-muted text-muted-foreground border-transparent",
+const statusMeta: Record<Subscription["status"], { icon: typeof CheckCircle; text: string; chip: string }> = {
+  critical: { icon: WarningCircle, text: "text-destructive", chip: "bg-destructive/10" },
+  warning: { icon: Clock, text: "text-warning", chip: "bg-warning/10" },
+  ok: { icon: CheckCircle, text: "text-success", chip: "bg-success/10" },
+  on_demand: { icon: InfinityIcon, text: "text-muted-foreground", chip: "bg-muted" },
 };
 
 export function SubscriptionsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin_ti";
-  const { subscriptions, loading, create, update, remove } = useSubscriptions();
+  const { subscriptions, loading, create, update, remove, markPaid } = useSubscriptions();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Subscription | null>(null);
@@ -96,12 +105,12 @@ export function SubscriptionsPage() {
       </div>
 
       {loading ? (
-        <Skeleton className="h-96 rounded-xl" />
+        <Skeleton className="h-96 rounded-2xl" />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <Reveal className="panel-flush overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Plataforma</TableHead>
                 <TableHead>Plano</TableHead>
                 <TableHead>Valor</TableHead>
@@ -112,7 +121,10 @@ export function SubscriptionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {subscriptions.map((sub) => (
+              {subscriptions.map((sub) => {
+                const meta = statusMeta[sub.status];
+                const StatusIcon = meta.icon;
+                return (
                 <TableRow key={sub.id}>
                   <TableCell>
                     <p className="font-medium text-foreground">{sub.platform}</p>
@@ -121,11 +133,12 @@ export function SubscriptionsPage() {
                   <TableCell className="text-muted-foreground">{cycleLabel[sub.billingCycle]}</TableCell>
                   <TableCell className="tabular-nums">{formatMoney(sub.amount, sub.currency)}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={cn("font-normal", statusBadgeClass[sub.status])}>
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs font-medium", meta.chip, meta.text)}>
+                      <StatusIcon weight="fill" className="size-3.5 shrink-0" />
                       {sub.status === "on_demand"
                         ? "Sob demanda"
                         : `${formatDate(sub.nextRenewalDate)} - ${formatDaysUntil(sub.daysUntil)}`}
-                    </Badge>
+                    </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{paymentLabel[sub.paymentMethod]}</TableCell>
                   <TableCell>
@@ -142,6 +155,18 @@ export function SubscriptionsPage() {
                   {isAdmin && (
                     <TableCell>
                       <div className="flex justify-end gap-1">
+                        {sub.recurrenceType !== "on_demand" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => markPaid(sub.id)}
+                            aria-label="Marcar como pago"
+                            title="Marcar como pago"
+                            className="text-success hover:text-success"
+                          >
+                            <CheckCircle className="size-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon-sm" onClick={() => openEdit(sub)} aria-label="Editar">
                           <PencilSimple className="size-4" />
                         </Button>
@@ -158,10 +183,11 @@ export function SubscriptionsPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
-        </div>
+        </Reveal>
       )}
 
       {isAdmin && (
