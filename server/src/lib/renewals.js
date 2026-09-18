@@ -13,23 +13,28 @@ function lastDayOfMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-function nextMonthlyOccurrence(day, from) {
+function occurrenceIn(year, monthIndex, day) {
+  return new Date(year, monthIndex, Math.min(day, lastDayOfMonth(year, monthIndex)));
+}
+
+function nextMonthlyOccurrence(day, from, lastPaidAt) {
   const today = startOfDay(from);
-  const clampedDay = (year, monthIndex) =>
-    Math.min(day, lastDayOfMonth(year, monthIndex));
+  const paidAt = lastPaidAt ? startOfDay(lastPaidAt) : null;
 
-  const thisMonth = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    clampedDay(today.getFullYear(), today.getMonth())
-  );
+  let candidate = occurrenceIn(today.getFullYear(), today.getMonth(), day);
 
-  if (thisMonth >= today) return thisMonth;
+  // Se o vencimento deste mes ja passou (ou e hoje) e ja foi pago (ultimo
+  // pagamento em ou depois dessa data), o ciclo atual esta quitado — avanca
+  // pro proximo mes. Sem isso, marcar como pago no proprio dia do vencimento
+  // nao tirava a cobranca de "vencendo hoje", porque essa funcao so olhava
+  // a data de hoje, nunca se ja tinha sido pago.
+  while (paidAt && paidAt >= candidate) {
+    candidate = occurrenceIn(candidate.getFullYear(), candidate.getMonth() + 1, day);
+  }
 
-  const nextMonthIndex = today.getMonth() + 1;
-  const year = today.getFullYear() + Math.floor(nextMonthIndex / 12);
-  const monthIndex = nextMonthIndex % 12;
-  return new Date(year, monthIndex, clampedDay(year, monthIndex));
+  if (candidate >= today) return candidate;
+
+  return occurrenceIn(candidate.getFullYear(), candidate.getMonth() + 1, day);
 }
 
 /**
@@ -71,7 +76,7 @@ export function computeRenewalStatus(subscription, now = new Date()) {
     }
     nextDate = new Date(`${subscription.recurrenceDate}T00:00:00`);
   } else if (subscription.recurrenceType === "monthly_day") {
-    nextDate = nextMonthlyOccurrence(subscription.recurrenceDay, now);
+    nextDate = nextMonthlyOccurrence(subscription.recurrenceDay, now, subscription.lastPaidAt);
   } else {
     return { nextRenewalDate: null, daysUntil: null, status: "on_demand" };
   }
