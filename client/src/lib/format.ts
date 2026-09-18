@@ -22,6 +22,18 @@ export function formatDate(isoDate: string | null) {
   return dateFormatter.format(new Date(`${isoDate}T00:00:00`));
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function formatDateTime(isoDateTime: string) {
+  return dateTimeFormatter.format(new Date(isoDateTime));
+}
+
 export function formatDaysUntil(daysUntil: number | null) {
   if (daysUntil == null) return "";
   if (daysUntil < 0) return `Vencida ha ${Math.abs(daysUntil)} dia${Math.abs(daysUntil) === 1 ? "" : "s"}`;

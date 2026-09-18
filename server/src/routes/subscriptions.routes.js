@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../auth/middleware.js";
 
 export const subscriptionsRouter = Router();
 const TABLE = "subscriptions";
+const PAYMENTS_TABLE = "subscription_payments";
 
 const BILLING_CYCLES = ["mensal", "anual", "sob_demanda"];
 const PAYMENT_METHODS = ["cartao_credito", "boleto", "pix", "outro"];
@@ -53,6 +54,17 @@ function fromRow(row) {
 
 function withStatus(subscription) {
   return { ...subscription, ...computeRenewalStatus(subscription) };
+}
+
+function paymentFromRow(row) {
+  return {
+    id: row.id,
+    subscriptionId: row.subscription_id,
+    paidAt: row.paid_at,
+    paidByName: row.paid_by_name,
+    amount: row.amount,
+    currency: row.currency,
+  };
 }
 
 function validatePayload(body, { partial = false } = {}) {
@@ -172,7 +184,18 @@ subscriptionsRouter.put("/:id", requireRole("admin_ti"), async (req, res) => {
   res.json({ subscription: withStatus(fromRow(updated)) });
 });
 
-subscriptionsRouter.post("/:id/pay", requireRole("admin_ti"), async (req, res) => {
+subscriptionsRouter.get("/:id/payments", async (req, res) => {
+  const { data, error } = await supabaseAdmin
+    .from(PAYMENTS_TABLE)
+    .select("*")
+    .eq("subscription_id", req.params.id)
+    .order("paid_at", { ascending: false });
+  if (error) throw error;
+
+  res.json({ payments: data.map(paymentFromRow) });
+});
+
+subscriptionsRouter.post("/:id/pay", async (req, res) => {
   const { data: current, error: fetchError } = await supabaseAdmin
     .from(TABLE)
     .select("*")
@@ -181,14 +204,25 @@ subscriptionsRouter.post("/:id/pay", requireRole("admin_ti"), async (req, res) =
   if (fetchError) throw fetchError;
   if (!current) return res.status(404).json({ error: "Assinatura nao encontrada." });
 
+  const now = new Date().toISOString();
   const updates = {
-    last_paid_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    last_paid_at: now,
+    updated_at: now,
   };
 
   if (current.recurrence_type === "fixed_date" && current.recurrence_date) {
     updates.recurrence_date = advanceFixedDate(current.recurrence_date, current.billing_cycle);
   }
+
+  const { error: paymentError } = await supabaseAdmin.from(PAYMENTS_TABLE).insert({
+    subscription_id: current.id,
+    paid_at: now,
+    paid_by: req.user.id,
+    paid_by_name: req.user.name,
+    amount: current.amount,
+    currency: current.currency,
+  });
+  if (paymentError) throw paymentError;
 
   const { data: updated, error } = await supabaseAdmin
     .from(TABLE)

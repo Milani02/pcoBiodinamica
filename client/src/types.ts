@@ -39,3 +39,12 @@ export type SubscriptionInput = Omit<
   Subscription,
   "id" | "createdAt" | "updatedAt" | "nextRenewalDate" | "daysUntil" | "status" | "lastPaidAt"
 >;
+
+export interface SubscriptionPayment {
+  id: string;
+  subscriptionId: string;
+  paidAt: string;
+  paidByName: string;
+  amount: number | null;
+  currency: Currency;
+}

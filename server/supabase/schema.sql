@@ -72,3 +72,32 @@ create policy "subscriptions_write_admin_ti"
       where profiles.id = auth.uid() and profiles.role = 'admin_ti'
     )
   );
+
+-- ============================================================
+-- subscription_payments: historico de "marcar como pago" das assinaturas
+-- ============================================================
+create table if not exists public.subscription_payments (
+  id uuid primary key default gen_random_uuid(),
+  subscription_id uuid not null references public.subscriptions(id) on delete cascade,
+  paid_at timestamptz not null default now(),
+  paid_by uuid references public.profiles(id) on delete set null,
+  paid_by_name text not null,
+  amount numeric,
+  currency text not null default 'BRL',
+  created_at timestamptz not null default now()
+);
+
+alter table public.subscription_payments enable row level security;
+
+drop policy if exists "subscription_payments_select_authenticated" on public.subscription_payments;
+create policy "subscription_payments_select_authenticated"
+  on public.subscription_payments for select
+  to authenticated
+  using (true);
+
+-- Nenhuma policy de insert: quem pode marcar como pago (admin_ti e
+-- diretoria) e decidido no backend (Express), que grava com a
+-- service_role key e ignora RLS.
+
+create index if not exists subscription_payments_subscription_id_idx
+  on public.subscription_payments (subscription_id, paid_at desc);

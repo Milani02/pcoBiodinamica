@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SubscriptionFormDialog } from "@/components/SubscriptionFormDialog";
+import { SubscriptionHistoryDialog } from "@/components/SubscriptionHistoryDialog";
 import { formatDate, formatDaysUntil, formatMoney } from "@/lib/format";
 import type { Subscription } from "@/types";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ export function SubscriptionsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Subscription | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<Subscription | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -93,7 +95,7 @@ export function SubscriptionsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Assinaturas</h1>
           <p className="text-sm text-muted-foreground">
-            {isAdmin ? "Gerencie as assinaturas de TI." : "Consulte as assinaturas de TI."}
+            {isAdmin ? "Gerencie as assinaturas de TI." : "Consulte as assinaturas de TI e marque pagamentos."}
           </p>
         </div>
         {isAdmin && (
@@ -117,7 +119,7 @@ export function SubscriptionsPage() {
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Pagamento</TableHead>
                 <TableHead>Links</TableHead>
-                {isAdmin && <TableHead className="text-right">Acoes</TableHead>}
+                <TableHead className="text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,8 +129,15 @@ export function SubscriptionsPage() {
                 return (
                 <TableRow key={sub.id}>
                   <TableCell>
-                    <p className="font-medium text-foreground">{sub.platform}</p>
-                    <p className="text-xs text-muted-foreground">{sub.subject}</p>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryTarget(sub)}
+                      className="text-left transition-colors hover:text-primary"
+                      title="Ver historico de pagamentos"
+                    >
+                      <p className="font-medium text-foreground">{sub.platform}</p>
+                      <p className="text-xs text-muted-foreground">{sub.subject}</p>
+                    </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{cycleLabel[sub.billingCycle]}</TableCell>
                   <TableCell className="tabular-nums">{formatMoney(sub.amount, sub.currency)}</TableCell>
@@ -152,36 +161,38 @@ export function SubscriptionsPage() {
                       )}
                     </div>
                   </TableCell>
-                  {isAdmin && (
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        {sub.recurrenceType !== "on_demand" && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => markPaid(sub.id)}
-                            aria-label="Marcar como pago"
-                            title="Marcar como pago"
-                            className="text-success hover:text-success"
-                          >
-                            <CheckCircle className="size-4" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(sub)} aria-label="Editar">
-                          <PencilSimple className="size-4" />
-                        </Button>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      {sub.recurrenceType !== "on_demand" && (
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => setDeleteTarget(sub)}
-                          aria-label="Excluir"
-                          className="text-destructive hover:text-destructive"
+                          onClick={() => markPaid(sub.id)}
+                          aria-label="Marcar como pago"
+                          title="Marcar como pago"
+                          className="text-success hover:text-success"
                         >
-                          <Trash className="size-4" />
+                          <CheckCircle className="size-4" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  )}
+                      )}
+                      {isAdmin && (
+                        <>
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(sub)} aria-label="Editar">
+                            <PencilSimple className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setDeleteTarget(sub)}
+                            aria-label="Excluir"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
                 );
               })}
@@ -198,6 +209,11 @@ export function SubscriptionsPage() {
           onSubmit={handleSubmit}
         />
       )}
+
+      <SubscriptionHistoryDialog
+        subscription={historyTarget}
+        onOpenChange={(open) => !open && setHistoryTarget(null)}
+      />
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

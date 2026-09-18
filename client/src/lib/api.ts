@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionInput } from "@/types";
+import type { Subscription, SubscriptionInput, SubscriptionPayment } from "@/types";
 import { supabase } from "@/lib/supabase";
 
 class ApiError extends Error {
@@ -55,6 +55,8 @@ export const api = {
     request<{ subscription: Subscription }>(`/subscriptions/${id}/pay`, {
       method: "POST",
     }),
+  listSubscriptionPayments: (id: string) =>
+    request<{ payments: SubscriptionPayment[] }>(`/subscriptions/${id}/payments`),
 };
 
 export { ApiError };
