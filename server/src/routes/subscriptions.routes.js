@@ -206,6 +206,14 @@ subscriptionsRouter.post("/:id/pay", async (req, res) => {
   if (fetchError) throw fetchError;
   if (!current) return res.status(404).json({ error: "Assinatura nao encontrada." });
 
+  if (current.last_paid_at) {
+    const lastPaid = new Date(current.last_paid_at);
+    const today = new Date();
+    if (lastPaid.getFullYear() === today.getFullYear() && lastPaid.getMonth() === today.getMonth()) {
+      return res.status(409).json({ error: "Esta assinatura ja foi marcada como paga neste mes." });
+    }
+  }
+
   const now = new Date().toISOString();
   const updates = {
     last_paid_at: now,

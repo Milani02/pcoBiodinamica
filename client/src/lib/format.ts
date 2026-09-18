@@ -34,6 +34,13 @@ export function formatDateTime(isoDateTime: string) {
   return dateTimeFormatter.format(new Date(isoDateTime));
 }
 
+export function isPaidThisMonth(lastPaidAt: string | null) {
+  if (!lastPaidAt) return false;
+  const lastPaid = new Date(lastPaidAt);
+  const today = new Date();
+  return lastPaid.getFullYear() === today.getFullYear() && lastPaid.getMonth() === today.getMonth();
+}
+
 export function formatDaysUntil(daysUntil: number | null) {
   if (daysUntil == null) return "";
   if (daysUntil < 0) return `Vencida ha ${Math.abs(daysUntil)} dia${Math.abs(daysUntil) === 1 ? "" : "s"}`;

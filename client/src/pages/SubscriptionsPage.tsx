@@ -35,7 +35,7 @@ import {
 import { SubscriptionFormDialog } from "@/components/SubscriptionFormDialog";
 import { SubscriptionHistoryDialog } from "@/components/SubscriptionHistoryDialog";
 import { MarkPaidDialog } from "@/components/MarkPaidDialog";
-import { formatDate, formatDaysUntil, formatMoney } from "@/lib/format";
+import { formatDate, formatDaysUntil, formatMoney, isPaidThisMonth } from "@/lib/format";
 import { cycleLabel, paymentLabel } from "@/lib/labels";
 import type { Subscription } from "@/types";
 import { cn } from "@/lib/utils";
@@ -158,9 +158,14 @@ export function SubscriptionsPage() {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => setPayTarget(sub)}
+                          disabled={isPaidThisMonth(sub.lastPaidAt)}
                           aria-label="Marcar como pago"
-                          title="Marcar como pago"
-                          className="text-success hover:text-success"
+                          title={
+                            isPaidThisMonth(sub.lastPaidAt)
+                              ? "Ja marcada como paga neste mes"
+                              : "Marcar como pago"
+                          }
+                          className="text-success hover:text-success disabled:text-muted-foreground"
                         >
                           <CheckCircle className="size-4" />
                         </Button>
