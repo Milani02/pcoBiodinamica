@@ -132,7 +132,7 @@ export function SubscriptionsPage() {
                     <button
                       type="button"
                       onClick={() => setHistoryTarget(sub)}
-                      className="text-left transition-colors hover:text-primary"
+                      className="cursor-pointer text-left transition-colors hover:text-primary"
                       title="Ver historico de pagamentos"
                     >
                       <p className="font-medium text-foreground">{sub.platform}</p>
