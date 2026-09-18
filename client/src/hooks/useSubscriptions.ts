@@ -61,9 +61,9 @@ export function useSubscriptions() {
     }
   }, [reload]);
 
-  const markPaid = useCallback(async (id: string) => {
+  const markPaid = useCallback(async (id: string, note?: string) => {
     try {
-      await api.markSubscriptionPaid(id);
+      await api.markSubscriptionPaid(id, note);
       toast.success("Assinatura marcada como paga.");
       await reload();
       return true;

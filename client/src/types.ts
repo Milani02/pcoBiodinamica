@@ -47,4 +47,6 @@ export interface SubscriptionPayment {
   paidByName: string;
   amount: number | null;
   currency: Currency;
+  paymentMethod: PaymentMethod | null;
+  note: string;
 }

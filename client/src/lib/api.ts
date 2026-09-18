@@ -51,9 +51,10 @@ export const api = {
     }),
   deleteSubscription: (id: string) =>
     request<void>(`/subscriptions/${id}`, { method: "DELETE" }),
-  markSubscriptionPaid: (id: string) =>
+  markSubscriptionPaid: (id: string, note?: string) =>
     request<{ subscription: Subscription }>(`/subscriptions/${id}/pay`, {
       method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
     }),
   listSubscriptionPayments: (id: string) =>
     request<{ payments: SubscriptionPayment[] }>(`/subscriptions/${id}/payments`),

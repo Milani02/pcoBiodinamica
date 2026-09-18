@@ -64,6 +64,8 @@ function paymentFromRow(row) {
     paidByName: row.paid_by_name,
     amount: row.amount,
     currency: row.currency,
+    paymentMethod: row.payment_method,
+    note: row.note,
   };
 }
 
@@ -214,6 +216,8 @@ subscriptionsRouter.post("/:id/pay", async (req, res) => {
     updates.recurrence_date = advanceFixedDate(current.recurrence_date, current.billing_cycle);
   }
 
+  const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+
   const { error: paymentError } = await supabaseAdmin.from(PAYMENTS_TABLE).insert({
     subscription_id: current.id,
     paid_at: now,
@@ -221,6 +225,8 @@ subscriptionsRouter.post("/:id/pay", async (req, res) => {
     paid_by_name: req.user.name,
     amount: current.amount,
     currency: current.currency,
+    payment_method: current.payment_method,
+    note,
   });
   if (paymentError) throw paymentError;
 

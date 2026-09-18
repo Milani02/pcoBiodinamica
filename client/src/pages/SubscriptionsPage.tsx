@@ -34,22 +34,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SubscriptionFormDialog } from "@/components/SubscriptionFormDialog";
 import { SubscriptionHistoryDialog } from "@/components/SubscriptionHistoryDialog";
+import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { formatDate, formatDaysUntil, formatMoney } from "@/lib/format";
+import { cycleLabel, paymentLabel } from "@/lib/labels";
 import type { Subscription } from "@/types";
 import { cn } from "@/lib/utils";
-
-const cycleLabel: Record<Subscription["billingCycle"], string> = {
-  mensal: "Mensal",
-  anual: "Anual",
-  sob_demanda: "Sob demanda",
-};
-
-const paymentLabel: Record<Subscription["paymentMethod"], string> = {
-  cartao_credito: "Cartao de credito",
-  boleto: "Boleto",
-  pix: "Pix",
-  outro: "Outro",
-};
 
 const statusMeta: Record<Subscription["status"], { icon: typeof CheckCircle; text: string; chip: string }> = {
   critical: { icon: WarningCircle, text: "text-destructive", chip: "bg-destructive/10" },
@@ -67,6 +56,7 @@ export function SubscriptionsPage() {
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Subscription | null>(null);
   const [historyTarget, setHistoryTarget] = useState<Subscription | null>(null);
+  const [payTarget, setPayTarget] = useState<Subscription | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -167,7 +157,7 @@ export function SubscriptionsPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => markPaid(sub.id)}
+                          onClick={() => setPayTarget(sub)}
                           aria-label="Marcar como pago"
                           title="Marcar como pago"
                           className="text-success hover:text-success"
@@ -213,6 +203,12 @@ export function SubscriptionsPage() {
       <SubscriptionHistoryDialog
         subscription={historyTarget}
         onOpenChange={(open) => !open && setHistoryTarget(null)}
+      />
+
+      <MarkPaidDialog
+        subscription={payTarget}
+        onOpenChange={(open) => !open && setPayTarget(null)}
+        onConfirm={markPaid}
       />
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>

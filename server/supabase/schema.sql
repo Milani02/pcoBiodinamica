@@ -84,8 +84,14 @@ create table if not exists public.subscription_payments (
   paid_by_name text not null,
   amount numeric,
   currency text not null default 'BRL',
+  payment_method text,
+  note text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- Migracao para bancos que ja tinham subscription_payments sem essas colunas:
+alter table public.subscription_payments add column if not exists payment_method text;
+alter table public.subscription_payments add column if not exists note text not null default '';
 
 alter table public.subscription_payments enable row level security;
 
